@@ -68,26 +68,26 @@ def validate_raw_schema(df: pd.DataFrame) -> None:
         raise ValueError(f"Raw data is missing required columns: {missing}")
 
     for col in (config.ID_COL, config.EMA_ID_COL):
-        n_null = int(df[col].isna().sum())
+        n_null = df[col].isna().sum()
         if n_null:
             raise ValueError(f"Column '{col}' has {n_null} null value(s).")
 
-    n_dup = int(df[config.EMA_ID_COL].duplicated().sum())
+    n_dup = df[config.EMA_ID_COL].duplicated().sum()
     if n_dup:
         raise ValueError(f"Column '{config.EMA_ID_COL}' has {n_dup} duplicate value(s).")
 
     craving = df[config.CRAVING_COL]
     if not is_numeric_dtype(craving):
         raise ValueError(f"Column '{config.CRAVING_COL}' must be numeric, got {craving.dtype}.")
-    n_null = int(craving.isna().sum())
+    n_null = craving.isna().sum()
     if n_null:
         raise ValueError(f"Column '{config.CRAVING_COL}' has {n_null} null value(s).")
-    n_out = int(((craving < config.CRAVING_MIN) | (craving > config.CRAVING_MAX)).sum())
+    n_out = ((craving < config.CRAVING_MIN) | (craving > config.CRAVING_MAX)).sum()
     if n_out:
         raise ValueError(
             f"Column '{config.CRAVING_COL}' has {n_out} value(s) outside "
             f"[{config.CRAVING_MIN}, {config.CRAVING_MAX}]."
         )
-    n_frac = int((craving % 1 != 0).sum())
+    n_frac = (craving % 1 != 0).sum()
     if n_frac:
         raise ValueError(f"Column '{config.CRAVING_COL}' has {n_frac} non-whole value(s).")

@@ -74,7 +74,7 @@ def _ema_sequence(ema_id: pd.Series) -> pd.Series:
     a text sort would put ``p1_10`` before ``p1_9``.
     """
     as_text = ema_id.astype(str)
-    n_bad = int((~as_text.str.fullmatch(r".*_\d+")).sum())
+    n_bad = (~as_text.str.fullmatch(r".*_\d+")).sum()
     if n_bad:
         raise ValueError(
             f"{n_bad} '{config.EMA_ID_COL}' value(s) lack an integer suffix after '_'."
