@@ -88,7 +88,7 @@ def fake_rds(tmp_path, monkeypatch):
 def test_load_raw_casts_id_to_str(raw_df, fake_rds):
     raw_df[config.ID_COL] = raw_df[config.ID_COL].astype("category")  # as in the real file
     out = load_raw(fake_rds(raw_df))
-    assert out[config.ID_COL].map(type).eq(str).all()
+    assert all(isinstance(v, str) for v in out[config.ID_COL])
 
 
 def test_load_raw_validates_by_default(raw_df, fake_rds):

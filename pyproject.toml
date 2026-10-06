@@ -1,3 +1,10 @@
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.pyrefly]
+# Imports are written as `from src import ...`, so the import root is the
+# project root, not `src/` (pyrefly's default guess for this layout).
+search-path = ["."]
+# Resolve third-party packages from the project venv, not the global Python.
+python-interpreter-path = ".venv/bin/python"
