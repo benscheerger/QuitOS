@@ -62,3 +62,46 @@ def raw_df() -> pd.DataFrame:
         if col not in df.columns:
             df[col] = 0.0
     return df
+
+
+BASELINE = {
+    "p1": {"age": 34.0, "cpd": 12.0, "sex": "female",
+           "time_to_first_cig": "Within 5 minutes", "motivation_to_stop": "Very high"},
+    "p2": {"age": 51.0, "cpd": 20.0, "sex": "male",
+           "time_to_first_cig": "6-30 minutes", "motivation_to_stop": "Medium"},
+}
+
+
+@pytest.fixture
+def features_raw_df(raw_df) -> pd.DataFrame:
+    """``raw_df`` plus what Step 2 needs. Run it through ``preprocess()`` first.
+
+    Adds per-participant baseline columns, every missing ``EMA_ITEM_COLUMNS``
+    entry (fixed 0.0), and one more p1 row:
+      - p1_12  scheduled, **study_day 2**, answered 09:30 next morning, craving 2
+
+    Real answers in time order: p1_8, p1_11, p1_10 | p1_12 (day 2); p2_1, p2_2.
+    Expected modelling rows: p1_8 -> p1_11, p1_11 -> p1_10, p2_1 -> p2_2.
+    p1_10 has no same-day next answer, so it is dropped (D2).
+    """
+    df = raw_df.copy()
+    for col in config.EMA_ITEM_COLUMNS:
+        if col not in df.columns:
+            df[col] = 0.0
+
+    day2 = df.loc[df[config.EMA_ID_COL] == "p1_8"].copy()
+    day2[config.EMA_ID_COL] = "p1_12"
+    day2[config.EMA_NUMBER_COL] = 1.0
+    day2[config.EMA_DATE_COL] = [DAY + dt.timedelta(days=1)]
+    day2[config.EMA_HOUR_COL] = 9.0
+    day2[config.STUDY_DAY_COL] = np.int32(2)
+    day2[config.EMA_DATETIME_COL] = pd.Timestamp(2026, 1, 6, 9, 30)
+    day2[config.CRAVING_COL] = 2.0
+    day2[config.LAPSE_COL] = 0.0
+    df = pd.concat([df, day2], ignore_index=True)
+
+    for col in (*config.BASELINE_NUMERIC, *config.CATEGORICAL_FEATURES):
+        df[col] = df[config.ID_COL].map({pid: vals[col] for pid, vals in BASELINE.items()})
+    for col in config.CATEGORICAL_FEATURES:
+        df[col] = df[col].astype(str)
+    return df

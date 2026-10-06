@@ -35,7 +35,7 @@ These are not up for debate in v1. Each one should be enforced by code or a test
 |---|---|---|
 | R1 | Dataset files and notebook outputs are never committed. | Public repo; the data is not ours to redistribute. |
 | R2 | **Test targets come only from real answers** (`EMA_date_time` not null), in every fold. Filled-in rows may be used for *training* only as described in D11. | 23% of rows (`*_imp` columns) were filled in by the dataset authors and look identical to real answers. They are smoother (SD 2.63 vs. 3.18) and make the task look easier: "next = current" MAE drops from 1.54 to 1.27 when they are included. The fill-in method may also have used future data. Scoring on them would inflate every metric. |
-| R3 | Excluded as features: `lapse_lagged`, `smoking_fup`, `last_time_smoke_fup`, `CO_reading*`, IDs (`nr`, `id`, `EMA_id`, `EMA_number`), study-admin columns, `participant_specific_variable_*`. | `lapse_lagged` is the **next** prompt's lapse. Follow-up/CO columns were measured after the study period. |
+| R3 | Excluded as features: `lapse_lagged`, `lapse_prior`, `smoking_fup`, `last_time_smoke_fup`, `CO_reading*`, IDs (`nr`, `id`, `EMA_id`, `EMA_number`), study-admin columns, `participant_specific_variable_*`. | `lapse_lagged` is the **next** prompt's lapse. `lapse_prior` was built by the authors from filled-in rows in `EMA_id` order; it differs from the real-answer history in 85 real rows and is replaced by our own `prev_lapse`. Follow-up/CO columns were measured after the study period. |
 | R4 | Rows are ordered by `id`, then `EMA_date_time`, **not** `EMA_id`. | `EMA_id` order disagrees with actual time in 4 cases. |
 | R5 | Features at time *t* use only that participant's information at or before *t*. Per-person statistics use only the *past* (running mean so far, rolling windows). | Prevents temporal leakage. |
 | R6 | Participant-level split: no participant appears in both train and test. | ICC ≈ 0.5, so a row-level split would reward memorising individuals. |
@@ -58,14 +58,16 @@ The defaults below were accepted on 2026-10-06. The other options stay listed so
 | D8 | Regularisation | Plain · Ridge (L2) | **Plain + Ridge variant**, strength tuned with participant-grouped cross-validation | Many related features, few people. |
 | D9 | Regression output range | Raw · clipped to [0, 10] | **Clip** | Craving is bounded. |
 | D10 | File location | Keep in `data/processed/` · move to `data/raw/` | **`data/raw/`**: done 2026-10-06; `.gitignore` covers all of `data/` | They are our raw input; matches the README. `data/processed/` is reserved for our own pipeline outputs. |
-| D11 | Filled-in rows as **training** targets | Real answers only · real answers plus filled-in rows, with a `was_filled_in` flag | **Real answers only**; the filled-in variant is run as a comparison | More rows add no new information about craving and may copy the authors' fill-in model. Because test scores always use real answers only (R2), the comparison is fair and the effect is measured, not assumed. |
+| D11 | Filled-in rows as **training** targets | Real answers only · real answers plus filled-in rows, with a `was_filled_in` flag | **Real answers only**; the filled-in variant is run as a comparison | More rows add no new information about craving and may copy the authors' fill-in model. Because test scores always use real answers only (R2), the comparison is fair and the effect is measured, not assumed. The variant must keep the **test pairs identical** to the default; filled-in rows may only *add* training pairs. |
 
 ## 5. v1 features (all computed at time *t*)
 
-- **Current survey answers:** craving, mood/affect items, motivation, confidence, pain, cigarette availability, substances, location/activity/social context (constant columns dropped), `lapse_event`, `lapse_prior`.
-- **Person history (past only):** running mean of craving so far, rolling mean of the last *k* answers, current craving minus the running mean, number of earlier answers.
-- **Time:** hour of day, study day, hours since the previous real answer, hours until the next prompt.
+- **Current survey answers:** craving, mood/affect items, motivation, confidence, pain, cigarette availability, substances, location/activity/social context (constant columns dropped), `lapse_event`.
+- **Person history (past only):** running mean of craving so far, rolling mean of the last *k* answers, current craving minus the running mean, number of earlier answers, `prev_lapse` (the previous real answer's lapse; replaces `lapse_prior`, see R3).
+- **Time:** hour of day, study day, hours since the previous real answer.
 - **Baseline traits (fixed per person):** age, sex, cigarettes per day (`cpd`), time to first cigarette, motivation to stop.
+
+**Not features:** `target_gap_h` (hours from *t* to the target answer) is kept as metadata only. It reveals whether the next prompt was skipped, which is future information: 610 of 4,343 pairs have a gap > 1.5 h, and 625 span at least one skipped prompt. "Hours until the next prompt" was dropped for the same reason.
 
 ## 6. Evaluation
 

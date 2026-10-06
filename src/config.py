@@ -63,6 +63,9 @@ EXCLUDED_COLUMNS = (
     "participant_specific_variable_2",
     "mpath_data",
     "fitbit_data",
+    # Authors' lapse_prior is built from filled-in rows in EMA_id order and
+    # disagrees with the real-answer history; replaced by prev_lapse.
+    "lapse_prior",
 )
 
 # Identifiers and timing columns kept for joins, ordering and splits.
@@ -82,4 +85,105 @@ KEY_COLUMNS = (
 REQUIRED_RAW_COLUMNS = tuple(c for c in KEY_COLUMNS if c != EVENT_TIME_COL) + (
     EMA_NUMBER_COL,
     CRAVING_COL,
+)
+
+# --- Step 2: features and targets ------------------------------------------------
+LAPSE_COL = "lapse_event_imp"
+HISTORY_WINDOW = 3  # rolling mean over the last k real answers (§5)
+
+# All 48 survey items in the raw file, in file order. "_imp" = filled in where
+# missing by the dataset authors; on feature rows only real answers are used (D3).
+EMA_ITEM_COLUMNS = (
+    "excited_imp",
+    "cigarette_availability_imp",
+    "calm_imp",
+    "bored_imp",
+    "enthusiastic_imp",
+    "irritable_imp",
+    "anxious_imp",
+    "contented_imp",
+    "lapse_event_imp",
+    "stressed_imp",
+    "sad_imp",
+    "motivation_imp",
+    "craving_imp",
+    "caffeine_imp",
+    "happy_imp",
+    "confidence_imp",
+    "pain_imp",
+    "alcohol_imp",
+    "nicotine_imp",
+    "location_home_imp",
+    "location_school_work_imp",
+    "location_outside_imp",
+    "location_restaurant_imp",
+    "location_public_place_imp",
+    "location_public_transport_imp",
+    "location_private_vehicle_imp",
+    "location_others_home_imp",
+    "location_other_imp",
+    "activity_eating_imp",
+    "activity_tv_imp",
+    "activity_music_imp",
+    "activity_reading_imp",
+    "activity_working_imp",
+    "activity_walking_imp",
+    "activity_child_care_imp",
+    "activity_socialising_imp",
+    "activity_social_media_imp",
+    "activity_relaxing_imp",
+    "activity_chores_imp",
+    "activity_other_imp",
+    "social_context_alone_imp",
+    "social_context_partner_imp",
+    "social_context_friend_imp",
+    "social_context_child_imp",
+    "social_context_relative_imp",
+    "social_context_colleague_imp",
+    "social_context_stranger_imp",
+    "social_context_other_imp",
+)
+
+# Person-history features (R5: past and current answer only)
+HISTORY_FEATURES = (
+    "craving_mean_so_far",
+    "craving_roll_mean",
+    "craving_dev_from_mean",
+    "n_prev_obs",
+    "prev_lapse",
+)
+# Time and context features known at t. No "time until next prompt": that
+# depends on whether future prompts are answered.
+TIME_FEATURES = (
+    "hour_of_day",
+    STUDY_DAY_COL,
+    "hours_since_prev_obs",
+    "is_first_obs",
+    IS_SELF_INITIATED_COL,
+)
+# Baseline traits, fixed per person (§5)
+BASELINE_NUMERIC = ("age", "cpd")
+CATEGORICAL_FEATURES = ("sex", "time_to_first_cig", "motivation_to_stop")
+
+NUMERIC_FEATURES = EMA_ITEM_COLUMNS + HISTORY_FEATURES + TIME_FEATURES + BASELINE_NUMERIC
+# Fixed order. Categorical columns stay as strings; encoding is fitted later on
+# training participants only (R7).
+FEATURE_COLUMNS = NUMERIC_FEATURES + CATEGORICAL_FEATURES
+
+# Targets (D1, D2)
+Y_CRAVING_NEXT = "y_craving_next"
+Y_HIGH_NEXT = "y_high_next"
+TARGET_COLUMNS = (Y_CRAVING_NEXT, Y_HIGH_NEXT)
+
+# Metadata about the target row. Never features: target_gap_h, for example,
+# reveals whether the next prompt was skipped (future information, R5).
+TARGET_EMA_ID_COL = "target_EMA_id"
+TARGET_EVENT_TIME_COL = "target_event_time"
+TARGET_GAP_H_COL = "target_gap_h"
+TARGET_IS_SELF_INITIATED_COL = "target_is_self_initiated"
+METADATA_COLUMNS = (
+    TARGET_EMA_ID_COL,
+    TARGET_EVENT_TIME_COL,
+    TARGET_GAP_H_COL,
+    TARGET_IS_SELF_INITIATED_COL,
 )
