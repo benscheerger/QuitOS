@@ -6,6 +6,22 @@ __pycache__/
 # C extensions
 *.so
 
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+
+models/*
+results/*
+data/**
+!data/**/
+!data/**/.gitkeep
+*.rds
+*.RData
+*.rda
+*.csv
+*.parquet
+
 # Distribution / packaging
 .Python
 build/
