@@ -1,4 +1,3 @@
-
 """Shared constants for the QuitOS v1 pipeline.
 
 Every value here is fixed up front (see docs/design_v1.md). Nothing is derived
@@ -7,12 +6,15 @@ from the data, so importing this module cannot leak information (R7, R8).
 
 from pathlib import Path
 
+import numpy as np
+
 # --- Paths -------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"  # D10: source files live here, never committed (R1)
 PROCESSED_DATA_DIR = DATA_DIR / "processed"  # reserved for our own pipeline outputs
 RAW_DATA_PATH = RAW_DATA_DIR / "analytic_sample_1.rds"
+RESULTS_DIR = PROJECT_ROOT / "results"  # aggregate metrics only; git-ignored
 
 # --- Key column names ----------------------------------------------------------
 ID_COL = "id"
@@ -38,6 +40,14 @@ RANDOM_STATE = 42
 
 CRAVING_MIN = 0
 CRAVING_MAX = 10
+
+# --- Model selection and evaluation (Step 4) -----------------------------------
+# Grids are tuned only inside each outer training fold, with participant-grouped
+# inner CV (D8, R7). Never tuned on outer test folds.
+RIDGE_ALPHAS = np.logspace(-2, 4, 13)
+LOGISTIC_CS = np.logspace(-4, 2, 13)
+INNER_SPLITS = 5
+CALIBRATION_BINS = 10  # quantile bins for the T2 calibration table (§6)
 
 # --- Column groups -------------------------------------------------------------
 # R3: never used as features. Leakage (lapse_lagged = next prompt's lapse),
