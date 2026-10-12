@@ -26,7 +26,8 @@ QuitOS/
 │   │
 │   ├── features/
 │   │   ├── __init__.py        # Makes features a Python package.
-│   │   └── build_features.py  # Builds ML features and future-craving targets.
+│   │   ├── build_features.py  # Builds ML features and future-craving targets.
+│   │   └── preprocessor.py    # Unfitted scaler/one-hot transformer, fit on training folds only.
 │   │
 │   ├── models/
 │   │   ├── __init__.py        # Makes models a Python package.
@@ -44,6 +45,7 @@ QuitOS/
 └── tests/
     ├── test_preprocess.py      # Tests data-cleaning behavior.
     ├── test_features.py        # Tests feature and target alignment.
+    ├── test_preprocessor.py    # Tests that preprocessing learns from training rows only.
     └── test_splits.py          # Tests against participant leakage.
 
 This project uses the publicly available EMASENS dataset from Leppin et al. (2026). Dataset files are not redistributed in this repository. See the original EMASENS repository for access.

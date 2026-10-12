@@ -152,8 +152,9 @@ HISTORY_FEATURES = (
     "n_prev_obs",
     "prev_lapse",
 )
-# Time and context features known at t. No "time until next prompt": that
-# depends on whether future prompts are answered.
+# Time and context features known at t. No "time until next prompt": the next
+# scheduled prompt is almost always ~1 h away (no signal); the actual gap to the
+# next answer is target_gap_h, which leaks future skips and is metadata only.
 TIME_FEATURES = (
     "hour_of_day",
     STUDY_DAY_COL,

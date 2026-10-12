@@ -105,3 +105,55 @@ def features_raw_df(raw_df) -> pd.DataFrame:
     for col in config.CATEGORICAL_FEATURES:
         df[col] = df[col].astype(str)
     return df
+
+
+CATEGORY_LEVELS = {
+    "sex": ["female", "male"],
+    "time_to_first_cig": ["Within 5 minutes", "6-30 minutes", "31-60 minutes"],
+    "motivation_to_stop": ["Low", "Medium", "High"],
+}
+
+
+@pytest.fixture
+def modeling_table() -> pd.DataFrame:
+    """A synthetic table shaped like ``build_modeling_table()`` output.
+
+    10 participants (p00..p09) with uneven row counts (3, 4, ..., 12 rows), all
+    ``FEATURE_COLUMNS``, targets and metadata. Values are random but seeded.
+    Baseline columns are constant within each participant, as in the real data.
+    """
+    rng = np.random.default_rng(42)
+    parts = []
+    for i in range(10):
+        pid = f"p{i:02d}"
+        n = 3 + i
+        times = pd.date_range("2026-01-05 09:00", periods=n, freq="h").astype("datetime64[s]")
+        y = rng.integers(0, 11, n).astype(float).tolist()
+        cols: dict[str, object] = {
+            config.ID_COL: [pid] * n,
+            config.EMA_ID_COL: [f"{pid}_{k}" for k in range(1, n + 1)],
+            config.EVENT_TIME_COL: times,
+        }
+        for col in config.NUMERIC_FEATURES:
+            cols[col] = rng.integers(0, 11, n).astype(float).tolist()
+        for col in config.BASELINE_NUMERIC:
+            cols[col] = [float(rng.integers(18, 70))] * n
+        for col in config.CATEGORICAL_FEATURES:
+            cols[col] = [str(rng.choice(CATEGORY_LEVELS[col]))] * n
+        cols[config.Y_CRAVING_NEXT] = y
+        cols[config.Y_HIGH_NEXT] = [int(v >= config.HIGH_CRAVING_THRESHOLD) for v in y]
+        cols[config.TARGET_EMA_ID_COL] = [f"{pid}_{k}" for k in range(2, n + 2)]
+        cols[config.TARGET_EVENT_TIME_COL] = times + pd.Timedelta(hours=1)
+        cols[config.TARGET_GAP_H_COL] = [1.0] * n
+        cols[config.TARGET_IS_SELF_INITIATED_COL] = [0] * n
+        parts.append(pd.DataFrame(cols))
+    table = pd.concat(parts, ignore_index=True)
+    columns = [
+        config.ID_COL,
+        config.EMA_ID_COL,
+        config.EVENT_TIME_COL,
+        *config.FEATURE_COLUMNS,
+        *config.TARGET_COLUMNS,
+        *config.METADATA_COLUMNS,
+    ]
+    return table[columns]

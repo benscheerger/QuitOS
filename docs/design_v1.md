@@ -51,7 +51,7 @@ The defaults below were accepted on 2026-10-06. The other options stay listed so
 | D1 | "High craving" cutoff | ≥7 (38% positive) · ≥8 (24%) · relative to each person's own level | **≥7, fixed in `config.py`** | Balanced classes; fixed up front, so no leakage. |
 | D2 | Meaning of "next" | Next real answer · same study day only · within 3h | **Next real answer, same study day** | Gives a clean ~1h-ahead task. 4,343 pairs, all 38 participants. |
 | D3 | Filled-in rows as feature inputs | Exclude · include with a "was filled in" flag · carry forward the last real answer plus "hours since last real answer" | **Exclude**; history features use real answers only, plus hours since the last real answer | Safest given the unknown fill-in method. Carrying forward the last real answer keeps history unbroken using only the past. |
-| D4 | Validation scheme | Single holdout · GroupKFold · GroupKFold + final holdout | **GroupKFold (k=5)**, plus an optional final holdout | 38 people is too few for one stable split. |
+| D4 | Validation scheme | Single holdout · GroupKFold · GroupKFold + final holdout | **GroupKFold (k=5)**, plus an optional final holdout | 38 people is too few for one stable split. v1 uses default GroupKFold (no shuffle): deterministic, size-balanced folds (8/8/8/7/7 participants). No final holdout in v1, because 38 participants is too few. |
 | D5 | Evaluation scenario | New user (participant unseen) · warm start, **simulated offline on this dataset**: each test participant's first 2–3 days are treated as "onboarding" and added to training, then their later days are scored. No deployed app or real users needed. | **v1: new user only** (the D4 GroupKFold), with test scores also **broken down by study day**. Warm start deferred. | One scheme keeps v1 simple. Person-history features already use each test participant's own earlier answers (no fitting, no leakage), so the by-day breakdown shows how much history helps. Refitting on each person's early days (warm start) is only worth it if that breakdown shows gains, or once models have per-person parameters. |
 | D6 | v1 features | See §5 | Person-history plus current survey answers | History captures most of the signal. |
 | D7 | Self-submitted lapse reports | Include as rows · scheduled prompts only | **Include**, plus an `is_self_initiated` flag | These are real answers. |
@@ -67,7 +67,7 @@ The defaults below were accepted on 2026-10-06. The other options stay listed so
 - **Time:** hour of day, study day, hours since the previous real answer.
 - **Baseline traits (fixed per person):** age, sex, cigarettes per day (`cpd`), time to first cigarette, motivation to stop.
 
-**Not features:** `target_gap_h` (hours from *t* to the target answer) is kept as metadata only. It reveals whether the next prompt was skipped, which is future information: 610 of 4,343 pairs have a gap > 1.5 h, and 625 span at least one skipped prompt. "Hours until the next prompt" was dropped for the same reason.
+**Not features:** `target_gap_h` (hours from *t* to the target answer) is kept as metadata only. It reveals whether the next prompt was skipped, which is future information: 610 of 4,343 pairs have a gap > 1.5 h, and 625 span at least one skipped prompt. "Hours until the next scheduled prompt" was dropped for a different reason: it is nearly always about 1 h, so it carries no signal.
 
 ## 6. Evaluation
 
