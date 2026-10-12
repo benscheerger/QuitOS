@@ -8,3 +8,12 @@ testpaths = ["tests"]
 search-path = ["."]
 # Resolve third-party packages from the project venv, not the global Python.
 python-interpreter-path = ".venv/bin/python"
+
+[[tool.pyrefly.sub-config]]
+# EDA notebook: int() around pandas/numpy counts is deliberate (numpy 2 would
+# show `np.int64(5)` in printed dicts), but pyrefly's stubs type `.sum()` as
+# int and flag the call as redundant.
+matches = "notebooks/**"
+
+[tool.pyrefly.sub-config.errors]
+unnecessary-type-conversion = false

@@ -31,6 +31,7 @@ QuitOS/
 │   │
 │   ├── models/
 │   │   ├── __init__.py        # Makes models a Python package.
+│   │   ├── cv.py              # Out-of-fold predictions; tuning on training-fold participants only.
 │   │   ├── train_linear.py    # Trains the craving-intensity regression baseline.
 │   │   ├── train_logistic.py  # Trains the high-craving classification baseline.
 │   │   └── evaluate.py        # Shared regression and classification metrics.
@@ -46,6 +47,8 @@ QuitOS/
     ├── test_preprocess.py      # Tests data-cleaning behavior.
     ├── test_features.py        # Tests feature and target alignment.
     ├── test_preprocessor.py    # Tests that preprocessing learns from training rows only.
-    └── test_splits.py          # Tests against participant leakage.
+    ├── test_splits.py          # Tests against participant leakage.
+    ├── test_models.py          # Tests out-of-fold fitting, baselines and model outputs.
+    └── test_evaluate.py        # Tests metrics, per-participant and calibration tables.
 
 This project uses the publicly available EMASENS dataset from Leppin et al. (2026). Dataset files are not redistributed in this repository. See the original EMASENS repository for access.

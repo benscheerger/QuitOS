@@ -1,6 +1,6 @@
 # QuitOS — v1 ML Pipeline Design
 
-**Status:** Accepted for v1 (decisions D1–D11 approved 2026-10-06) · **Last updated:** 2026-10-06 · **Source of findings:** `notebooks/01_eda.ipynb`
+**Status:** Accepted for v1 (decisions D1–D11 approved 2026-10-06; D12 approved 2026-10-11) · **Last updated:** 2026-10-11 · **Source of findings:** `notebooks/01_eda.ipynb`
 
 ## 1. Goal and scope
 
@@ -51,7 +51,7 @@ The defaults below were accepted on 2026-10-06. The other options stay listed so
 | D1 | "High craving" cutoff | ≥7 (38% positive) · ≥8 (24%) · relative to each person's own level | **≥7, fixed in `config.py`** | Balanced classes; fixed up front, so no leakage. |
 | D2 | Meaning of "next" | Next real answer · same study day only · within 3h | **Next real answer, same study day** | Gives a clean ~1h-ahead task. 4,343 pairs, all 38 participants. |
 | D3 | Filled-in rows as feature inputs | Exclude · include with a "was filled in" flag · carry forward the last real answer plus "hours since last real answer" | **Exclude**; history features use real answers only, plus hours since the last real answer | Safest given the unknown fill-in method. Carrying forward the last real answer keeps history unbroken using only the past. |
-| D4 | Validation scheme | Single holdout · GroupKFold · GroupKFold + final holdout | **GroupKFold (k=5)**, plus an optional final holdout | 38 people is too few for one stable split. v1 uses default GroupKFold (no shuffle): deterministic, size-balanced folds (8/8/8/7/7 participants). No final holdout in v1, because 38 participants is too few. |
+| D4 | Validation scheme | Single holdout · GroupKFold · GroupKFold + final holdout | **GroupKFold (k=5)**; no final holdout in v1 | 38 people is too few for one stable split. v1 uses default GroupKFold (no shuffle): deterministic, size-balanced folds (8/8/8/7/7 participants). No final holdout in v1, because 38 participants is too few. |
 | D5 | Evaluation scenario | New user (participant unseen) · warm start, **simulated offline on this dataset**: each test participant's first 2–3 days are treated as "onboarding" and added to training, then their later days are scored. No deployed app or real users needed. | **v1: new user only** (the D4 GroupKFold), with test scores also **broken down by study day**. Warm start deferred. | One scheme keeps v1 simple. Person-history features already use each test participant's own earlier answers (no fitting, no leakage), so the by-day breakdown shows how much history helps. Refitting on each person's early days (warm start) is only worth it if that breakdown shows gains, or once models have per-person parameters. |
 | D6 | v1 features | See §5 | Person-history plus current survey answers | History captures most of the signal. |
 | D7 | Self-submitted lapse reports | Include as rows · scheduled prompts only | **Include**, plus an `is_self_initiated` flag | These are real answers. |
@@ -59,6 +59,7 @@ The defaults below were accepted on 2026-10-06. The other options stay listed so
 | D9 | Regression output range | Raw · clipped to [0, 10] | **Clip** | Craving is bounded. |
 | D10 | File location | Keep in `data/processed/` · move to `data/raw/` | **`data/raw/`**: done 2026-10-06; `.gitignore` covers all of `data/` | They are our raw input; matches the README. `data/processed/` is reserved for our own pipeline outputs. |
 | D11 | Filled-in rows as **training** targets | Real answers only · real answers plus filled-in rows, with a `was_filled_in` flag | **Real answers only**; the filled-in variant is run as a comparison | More rows add no new information about craving and may copy the authors' fill-in model. Because test scores always use real answers only (R2), the comparison is fair and the effect is measured, not assumed. The variant must keep the **test pairs identical** to the default; filled-in rows may only *add* training pairs. |
+| D12 | T1 primary metric | MAE only · RMSE only · MAE and RMSE co-primary | **MAE and RMSE co-primary** | 37.9% of next cravings equal the current one, so persistence is very strong on MAE, while linear models minimise squared error and tend to win on RMSE. Neither metric alone is fair. A model only "beats" a baseline on the metric where it actually wins. |
 
 ## 5. v1 features (all computed at time *t*)
 
@@ -73,21 +74,21 @@ The defaults below were accepted on 2026-10-06. The other options stay listed so
 
 | Task | Metrics | Comparison baselines |
 |---|---|---|
-| T1 | MAE, RMSE, R² (pooled **and** averaged per participant) | Persistence (next = current); training-set mean; person's running mean |
-| T2 | ROC-AUC, PR-AUC, Brier score, calibration curve (pooled and per participant) | Training-set rate of high craving; persistence (`current ≥ threshold`) |
+| T1 | MAE, RMSE, R² (pooled **and** averaged per participant) | Persistence (next = current); training-set mean; person's running mean; linear model on current craving only |
+| T2 | ROC-AUC, PR-AUC, Brier score, calibration curve (pooled and per participant) | Training-set rate of high craving; current craving as a ranking score (persistence); logistic model on current craving only |
 
-A model is only useful if it beats **persistence**. On same-day pairs of real answers, persistence has MAE 1.48 vs. 2.75 for the mean.
+A model is only useful if it beats **persistence**. On same-day pairs of real answers, persistence has MAE 1.48 vs. 2.79 for the (out-of-fold) training mean. Following D12, a model "beats" a baseline only on the metric where it wins (e.g. better RMSE but worse MAE is reported as exactly that). The craving-only models show how much the extra features add beyond the current craving.
 
 All metrics are also reported **by study day** of the test participant, to show how much accumulated history helps (see D5).
 
 **Metric notes**
-- **T1:** MAE (mean absolute error) is the headline metric. It is in craving points, easy to read, and directly comparable to the baselines. RMSE (the loss linear regression minimises) penalises big misses. Pooled R² is inflated by between-person variance, so per-participant averages are also reported.
+- **T1:** MAE (mean absolute error) and RMSE are co-primary (D12). MAE is in craving points, easy to read, and directly comparable to the baselines. RMSE (the loss linear regression minimises) penalises big misses. Pooled R² is inflated by between-person variance, so per-participant averages are also reported.
 - **T2:**
   - ROC-AUC measures how well moments are ranked (0.5 = random).
   - PR-AUC measures the precision/recall trade-off. Its random baseline is the share of high moments (≈ 0.38), not 0.5. Precision maps to alert fatigue, recall to missed cravings.
-  - Brier score measures probability accuracy. Always predicting the training rate scores ≈ 0.235.
+  - Brier score measures probability accuracy. Always predicting the training rate scores ≈ 0.237 (out-of-fold).
   - Calibration checks that predicted probabilities match how often high craving actually happens.
-- **Per-participant AUC** checks whether the model finds *when* a person craves, not just *who* craves. It can't be computed for participants who are never or always high (1 person at ≥7); report how many were excluded.
+- **Per-participant AUC** checks whether the model finds *when* a person craves, not just *who* craves. It can't be computed for participants who are never or always high (2 people at ≥7 on the 4,343 pairs); report how many were excluded.
 - **Accuracy is not used:** always predicting "not high" already scores ≈ 62%.
 - **The alert cutoff** (when to intervene) is a later product decision. When chosen, it is set on training folds only and reported as precision and recall at that cutoff.
 

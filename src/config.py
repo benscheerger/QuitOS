@@ -1,3 +1,4 @@
+
 """Shared constants for the QuitOS v1 pipeline.
 
 Every value here is fixed up front (see docs/design_v1.md). Nothing is derived
